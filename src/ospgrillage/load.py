@@ -1187,6 +1187,21 @@ class LoadModel:
     def create(self):
         if self.model_type == "M1600":
             return self.create_m1600_vehicle(self.gap)
+        elif self.model_type == "CLASS70R_W":
+            return self.create_class70r_W_vehicle()
+        elif self.model_type == "CLASS70R_T":
+            return self.create_class70r_T_vehicle()
+        elif self.model_type == "CLASSA":
+            return self.create_classA_vehicle()
+        elif self.model_type == "CLASSAA_W":
+            return self.create_classAA_W_vehicle()
+        elif self.model_type == "CLASSAA_T":
+            return self.create_classAA_T_vehicle()
+        elif self.model_type == "SV":
+            return self.create_classSV_vehicle()
+        elif self.model_type == "FATIGUE":
+            return self.create_fatigue_vehicle()
+        # Legacy support
         elif self.model_type == "CLASS70R":
             return self.create_class70r_W_vehicle()
 
@@ -1306,6 +1321,369 @@ class LoadModel:
                 Class70R_vehicle.add_load(load_obj=point)
 
         return Class70R_vehicle
+
+    def create_class70r_T_vehicle(self):
+        """
+        IRC Class 70R tracked vehicle (Clause 204.1, Fig. 1)
+        70 tonne tracked vehicle
+        Returns a CompoundLoad with patch loads representing track contact areas
+        """
+        # Units
+        m = 1
+        kN = 1e3
+
+        # Geometry as per IRC:6-2017 Fig. 1
+        track_length = 4.570 * m
+        track_width = 0.84 * m  # each track width
+        total_load = 700 * kN   # 70 tonnes
+        
+        # Track load intensity derived from total load and contact area
+        # p = total_load / (2 tracks × length × width)
+        track_load_intensity = total_load / (2 * track_length * track_width)
+        
+        # Longitudinal positions
+        x_start = 0.0 + self.x_offset
+        x_end = track_length + self.x_offset
+
+        # Transverse positions of track centerlines (as per Fig. 1)
+        load_positions_z = [-1.03, 1.03]
+        load_positions_z = [z + self.z_offset for z in load_positions_z]
+
+        # Create compound load
+        Class70R_T_vehicle = create_compound_load(name="Class 70R T Vehicle")
+        
+        # Validate total load
+        expected_total = total_load
+        
+        # Create patch loads for each track
+        for track_index, z in enumerate(load_positions_z):
+            patch = create_load(
+                loadtype="patch",
+                name=f"Class70R Track {track_index + 1}",
+                point1=create_load_vertex(x=x_start, z=z - track_width/2, p=track_load_intensity),
+                point2=create_load_vertex(x=x_end, z=z - track_width/2, p=track_load_intensity),
+                point3=create_load_vertex(x=x_end, z=z + track_width/2, p=track_load_intensity),
+                point4=create_load_vertex(x=x_start, z=z + track_width/2, p=track_load_intensity),
+            )
+            Class70R_T_vehicle.add_load(load_obj=patch)
+
+        return Class70R_T_vehicle
+
+    def create_classA_vehicle(self):
+        """
+        IRC Class A wheeled vehicle (Clause 204.1)
+        Returns a CompoundLoad in local coordinates
+        """
+        # Units
+        m = 1
+        kN = 1e3
+
+        # Geometry (IRC 6:2017)
+        front_gap = 0.6 * m
+        axle_dist1 = 1.100 * m
+        axle_dist2 = 3.200 * m
+        axle_dist3 = 1.200 * m
+        gap_bogie = 4.300 * m
+        bogie_axle_dist = 3.000 * m
+        rear_gap = 0.900 * m
+
+        # Wheel loads per axle (kN)
+        wheel_loads = [
+            2.7 * kN, 2.7 * kN, 11.4 * kN, 11.4 * kN,
+            6.8 * kN, 6.8 * kN, 6.8 * kN, 6.8 * kN
+        ]
+
+        # Longitudinal axle positions
+        load_positions_x = [
+            front_gap,
+            front_gap + axle_dist1,
+            front_gap + axle_dist1 + axle_dist2,
+            front_gap + axle_dist1 + axle_dist2 + axle_dist3,
+            front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie,
+            front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie + bogie_axle_dist,
+            front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie + 2 * bogie_axle_dist,
+            front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie + 3 * bogie_axle_dist + rear_gap,
+        ]
+
+        # Apply global offsets
+        load_positions_x = [x + self.x_offset for x in load_positions_x]
+
+        # Wheel track width (transverse positions)
+        load_positions_z = [-0.9, 0.9]
+        load_positions_z = [z + self.z_offset for z in load_positions_z]
+
+        # Create compound load
+        ClassA_vehicle = create_compound_load(name="Class A Vehicle")
+
+        # Create point loads
+        for axle_index, x in enumerate(load_positions_x):
+            for z in load_positions_z:
+                vert = create_load_vertex(
+                    x=x,
+                    z=z,
+                    p=wheel_loads[axle_index] / 2  # split axle load into two wheels
+                )
+                point = create_load(
+                    loadtype="point",
+                    name="ClassA wheel",
+                    point1=vert
+                )
+                ClassA_vehicle.add_load(load_obj=point)
+
+        return ClassA_vehicle
+
+    def create_classAA_W_vehicle(self):
+        """
+        IRC Class AA Wheeled Vehicle (Clause 204.1)
+        Based on user provided diagram (Detailed 40T Bogie)
+        
+        Total Load: 40 Tonnes (400 kN)
+        Configuration: 2 Axles at 1.2m spacing
+        Wheel Arrangement: Dual wheels with unequal load distribution
+        """
+        m = 1
+        kN = 1e3 
+
+        # --- Geometry Setup ---
+        # Longitudinal spacing between axles (from side view)
+        axle_spacing_x = [0.0, 1.200 * m]
+        
+        # Apply global longitudinal offset
+        load_positions_x = [x + self.x_offset for x in axle_spacing_x]
+
+        # Transverse Configuration (from Cross-Section view)
+        # The diagram defines spacing center-to-center for inner and outer wheels.
+        # Inner c/c = 1.150m  => Distance from center = +/- 0.575m
+        # Outer c/c = 2.050m  => Distance from center = +/- 1.025m
+        
+        # Loads: Inner = 6.25T, Outer = 3.75T
+        # We convert Tonnes to kN (1 Tonne approx 10 kN for IRC loading)
+        load_inner = 6.25 * 10 * kN
+        load_outer = 3.75 * 10 * kN
+        
+        # Define the 4 wheels for a single axle: (z_local, load_value)
+        transverse_wheels = [
+            (-1.025 * m, load_outer), # Left Outer
+            (-0.575 * m, load_inner), # Left Inner
+            ( 0.575 * m, load_inner), # Right Inner
+            ( 1.025 * m, load_outer)  # Right Outer
+        ]
+
+        # --- Compound Load Creation ---
+        ClassAA_W_vehicle = create_compound_load(name="Class AA W Vehicle")
+
+        for axle_index, x in enumerate(load_positions_x):
+            for i, (z_local, p_load) in enumerate(transverse_wheels):
+                
+                # Apply global transverse offset
+                z_final = z_local + self.z_offset
+
+                # Create vertex for the wheel load
+                vert = create_load_vertex(
+                    x=x,
+                    z=z_final,
+                    p=p_load 
+                )
+                
+                # Naming helper to distinguish inner/outer
+                w_type = "Inner" if p_load == load_inner else "Outer"
+                
+                point = create_load(
+                    loadtype="point",
+                    name=f"ClassAA Axle{axle_index+1} {w_type}Wheel_{i+1}",
+                    point1=vert
+                )
+                ClassAA_W_vehicle.add_load(load_obj=point)
+
+        return ClassAA_W_vehicle
+
+    def create_classAA_T_vehicle(self):
+        """
+        IRC Class AA Tracked Vehicle (Clause 204.1)
+        Based on user provided diagram (70T Tank)
+        
+        Total Load: 70 Tonnes (700 kN)
+        Contact Length: 3.6m
+        Track Width: 0.85m
+        """
+        m = 1
+        kN = 1e3
+
+        # --- Geometry Setup ---
+        # Dimensions from diagram
+        track_contact_length = 3.600 * m
+        track_width = 0.850 * m
+        inner_gap = 1.200 * m
+        
+        # Total Load
+        total_load = 700 * kN  # 70 Tonnes
+        
+        # Calculate Load Intensity (Pressure)
+        # Pressure = Total Load / (2 tracks * Length * Width)
+        contact_area_per_track = track_contact_length * track_width
+        track_pressure = total_load / (2 * contact_area_per_track)
+        
+        # Longitudinal positions (Start and End of track contact)
+        x_start = 0.0 + self.x_offset
+        x_end = track_contact_length + self.x_offset
+
+        # Transverse positions (Centerlines of the two tracks)
+        # Centerline offset = (Inner Gap / 2) + (Track Width / 2)
+        # Offset = 0.600 + 0.425 = 1.025m
+        center_offset = (inner_gap / 2) + (track_width / 2)
+        
+        track_centerlines_z = [-center_offset, center_offset]
+        
+        # Apply global transverse offset
+        track_centerlines_z = [z + self.z_offset for z in track_centerlines_z]
+
+        # --- Compound Load Creation ---
+        ClassAA_T_vehicle = create_compound_load(name="Class AA T Vehicle")
+        
+        for track_index, z_center in enumerate(track_centerlines_z):
+            # Define corners of the rectangular patch load
+            # z_center is the middle of the track width
+            z_left = z_center - (track_width / 2)
+            z_right = z_center + (track_width / 2)
+            
+            patch = create_load(
+                loadtype="patch",
+                name=f"ClassAA Track {track_index + 1}",
+                point1=create_load_vertex(x=x_start, z=z_left,  p=track_pressure),
+                point2=create_load_vertex(x=x_end,   z=z_left,  p=track_pressure),
+                point3=create_load_vertex(x=x_end,   z=z_right, p=track_pressure),
+                point4=create_load_vertex(x=x_start, z=z_right, p=track_pressure),
+            )
+            ClassAA_T_vehicle.add_load(load_obj=patch)
+
+        return ClassAA_T_vehicle
+
+    def create_classSV_vehicle(self):
+        """
+        IRC Special Vehicle (SV) as per Clause 204.5.1
+        Prime mover + 20 axle hydraulic trailer (385 tonnes total)
+        Returns a CompoundLoad in local coordinates
+        """
+        # Units
+        m = 1
+        kN = 1e3
+        g = 9.81  # gravity for tonne to kN conversion
+
+        # Longitudinal Spacing (IRC 6:2017)
+        dist12 = 3.200 * m
+        dist23 = 1.370 * m
+        dist34 = 5.389 * m
+        trailer_spacing = 1.500 * m
+
+        # Axle Loads (tonnes) - same as IRC6_2017.cl_204_5_1_special_vehicle
+        axle_loads_tonne = (
+            [6.0] +           # 1 steering axle
+            [9.5, 9.5] +      # 2 bogie axles
+            [18.0] * 20       # 20 trailer axles
+        )
+
+        # Convert tonne to kN (1 tonne × 9.81 m/s² = 9.81 kN)
+        # g already converts to kN, no additional kN factor needed
+        wheel_loads = [ax * g for ax in axle_loads_tonne]
+
+        # Longitudinal Positions
+        load_positions_x = [0.0]
+        load_positions_x.append(load_positions_x[-1] + dist12)
+        load_positions_x.append(load_positions_x[-1] + dist23)
+        load_positions_x.append(load_positions_x[-1] + dist34)
+
+        # 19 spacings for 20 trailer axles
+        for _ in range(19):
+            load_positions_x.append(load_positions_x[-1] + trailer_spacing)
+
+        # Apply global offsets
+        load_positions_x = [x + self.x_offset for x in load_positions_x]
+
+        # Transverse Positions
+        load_positions_z = [-0.9, 0.9]
+        load_positions_z = [z + self.z_offset for z in load_positions_z]
+
+        # Create compound load
+        SV_vehicle = create_compound_load(name="Special Vehicle (SV)")
+
+        # Create point loads for each axle
+        for axle_index, x in enumerate(load_positions_x):
+            for z in load_positions_z:
+                vert = create_load_vertex(
+                    x=x,
+                    z=z,
+                    p=wheel_loads[axle_index] / 2  # split axle load into two wheels
+                )
+                point = create_load(
+                    loadtype="point",
+                    name="SV wheel",
+                    point1=vert
+                )
+                SV_vehicle.add_load(load_obj=point)
+
+        return SV_vehicle
+
+    def create_fatigue_vehicle(self):
+        """
+        IRC Fatigue Load Train (Clause 204.6, Figure 7A)
+        40 tonne 3-axle truck for fatigue assessment
+        Uses values from IRC6_2017.cl_204_6_fatigue_load()
+        Returns a CompoundLoad in local coordinates
+        """
+        # Units
+        m = 1
+        kN = 1e3
+
+        # Geometry as per IRC:6-2017 cl_204_6 / Figure 7A
+        axle_spacing_1 = 4.50 * m  # spacing between axle 1 and 2
+        axle_spacing_2 = 1.40 * m  # spacing between axle 2 and 3 (tandem axle)
+
+        # Axle loads as per IRC:6-2017 Fig. 7A (40 tonnes total)
+        # Axle 1: 12 tonnes = 120 kN
+        # Axle 2: 14 tonnes = 140 kN
+        # Axle 3: 14 tonnes = 140 kN
+        wheel_loads = [
+            12 * kN,  # Axle 1 (front)
+            14 * kN,  # Axle 2 (tandem)
+            14 * kN,  # Axle 3 (tandem)
+        ]
+        
+        # Validate total load (40 tonnes = 400 kN)
+        assert abs(sum(wheel_loads) - 40 * kN) < 1, "Fatigue load total should be 40 kN (from wheel loads)"
+
+        # Longitudinal axle positions
+        load_positions_x = [
+            0.0,
+            axle_spacing_1,
+            axle_spacing_1 + axle_spacing_2,
+        ]
+
+        # Apply global offsets
+        load_positions_x = [x + self.x_offset for x in load_positions_x]
+
+        # Wheel track width (transverse positions) as per IRC
+        load_positions_z = [-0.840, 0.840]
+        load_positions_z = [z + self.z_offset for z in load_positions_z]
+
+        # Create compound load
+        Fatigue_vehicle = create_compound_load(name="Fatigue Vehicle")
+
+        # Create point loads
+        for axle_index, x in enumerate(load_positions_x):
+            for z in load_positions_z:
+                vert = create_load_vertex(
+                    x=x,
+                    z=z,
+                    p=wheel_loads[axle_index] / 2  # split axle load into two wheels
+                )
+                point = create_load(
+                    loadtype="point",
+                    name="Fatigue wheel",
+                    point1=vert
+                )
+                Fatigue_vehicle.add_load(load_obj=point)
+
+        return Fatigue_vehicle
 
 
 # ---------------------------------------------------------------------------------------------------------------
