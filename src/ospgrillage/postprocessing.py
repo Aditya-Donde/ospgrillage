@@ -289,10 +289,10 @@ def plot_force(
         zz = [nodes[n]["coordinate"][2] for n in ele_node.values]
         # use ops_vis module to get force distribution on element
         s, al = opsv.section_force_distribution_3d(
-            ex=xx,
-            ey=yy,
-            ez=zz,
-            pl=ele_components,  # TODO check inputs with opsv package
+            xx,
+            yy,
+            zz,
+            ele_components,  # TODO check inputs with opsv package
         )
 
         # plot element force component
@@ -464,7 +464,7 @@ class PostProcessor:
             x4=x[3],
             z4=z[3],
         )
-        if shape_function_type is "linear":
+        if shape_function_type == "linear":
             shape_func = self.shape_function_obj.linear_shape_function(
                 eta=eta, zeta=zeta
             )
