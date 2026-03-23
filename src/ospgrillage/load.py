@@ -1647,7 +1647,7 @@ class LoadModel:
                 M1600_vehicle.add_load(point)
 
         return M1600_vehicle
-    
+
     def create_class70r_vehicle(self):
         """
         IRC Class 70R wheeled vehicle (Clause 204.1)
@@ -1685,8 +1685,19 @@ class LoadModel:
             front_gap + axle_dist1 + axle_dist2,
             front_gap + axle_dist1 + axle_dist2 + gap_bogie,
             front_gap + axle_dist1 + axle_dist2 + gap_bogie + bogie_axle_dist1,
-            front_gap + axle_dist1 + axle_dist2 + gap_bogie + bogie_axle_dist1 + bogie_axle_dist2,
-            front_gap + axle_dist1 + axle_dist2 + gap_bogie + bogie_axle_dist1 + bogie_axle_dist2 + rear_gap,
+            front_gap
+            + axle_dist1
+            + axle_dist2
+            + gap_bogie
+            + bogie_axle_dist1
+            + bogie_axle_dist2,
+            front_gap
+            + axle_dist1
+            + axle_dist2
+            + gap_bogie
+            + bogie_axle_dist1
+            + bogie_axle_dist2
+            + rear_gap,
         ]
 
         # Apply global offsets
@@ -1705,12 +1716,10 @@ class LoadModel:
                 vert = create_load_vertex(
                     x=x,
                     z=z,
-                    p=wheel_loads[axle_index] / 2  # split axle load into two wheels
+                    p=wheel_loads[axle_index] / 2,  # split axle load into two wheels
                 )
                 point = create_load(
-                    loadtype="point",
-                    name="Class70R wheel",
-                    point1=vert
+                    loadtype="point", name="Class70R wheel", point1=vert
                 )
                 Class70R_vehicle.add_load(load_obj=point)
 
@@ -1754,9 +1763,25 @@ class LoadModel:
             front_gap + axle_dist1 + axle_dist2,
             front_gap + axle_dist1 + axle_dist2 + axle_dist3,
             front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie,
-            front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie + bogie_axle_dist,
-            front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie + 2 * bogie_axle_dist,
-            front_gap + axle_dist1 + axle_dist2 + axle_dist3 + gap_bogie + 3 * bogie_axle_dist + rear_gap,
+            front_gap
+            + axle_dist1
+            + axle_dist2
+            + axle_dist3
+            + gap_bogie
+            + bogie_axle_dist,
+            front_gap
+            + axle_dist1
+            + axle_dist2
+            + axle_dist3
+            + gap_bogie
+            + 2 * bogie_axle_dist,
+            front_gap
+            + axle_dist1
+            + axle_dist2
+            + axle_dist3
+            + gap_bogie
+            + 3 * bogie_axle_dist
+            + rear_gap,
         ]
 
         # Apply global offsets
@@ -1775,17 +1800,14 @@ class LoadModel:
                 vert = create_load_vertex(
                     x=x,
                     z=z,
-                    p=wheel_loads[axle_index] / 2  # split axle load into two wheels
+                    p=wheel_loads[axle_index] / 2,  # split axle load into two wheels
                 )
-                point = create_load(
-                    loadtype="point",
-                    name="ClassA wheel",
-                    point1=vert
-                )
+                point = create_load(loadtype="point", name="ClassA wheel", point1=vert)
                 ClassA_vehicle.add_load(load_obj=point)
 
         return ClassA_vehicle
-    
+
+
 # ---------------------------------------------------------------------------------------------------------------
 class ShapeFunction:
     """
