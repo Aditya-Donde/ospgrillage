@@ -1519,20 +1519,22 @@ def test_irc_vehicle_analysis_smoke(bridge_model_42_negative):
     assert np.all(np.isfinite(force_values)), "Non-finite beam force values for IRC vehicles"
 
 
-def test_class70r_total_load_is_1000kN():
-    """Class 70R total axle load must equal 1000 kN per IRC 6-2017 Clause 204.1."""
+def test_class70r_total_load():
+    """Class 70R total axle load: 100 tonnes × g = 981 kN."""
+    g = 9.81
+    expected_N = (8 + 12 + 12 + 17 + 17 + 17 + 17) * 1e3 * g  # 981 000 N
     vehicle = og.LoadModel(model_type="CLASS70R").create()
-    # Each axle load is split equally across 2 wheel positions; sum all point loads
     total_N = sum(pl.load_point_1.p for pl in vehicle.compound_load_obj_list)
-    # total_N is the sum of per-wheel loads (each axle load / 2), so total = sum of all axle loads
-    assert abs(total_N - 1_000_000) < 1, f"Class 70R total load {total_N} N != 1000 kN"
+    assert abs(total_N - expected_N) < 1, f"Class 70R total load {total_N} N != {expected_N} N"
 
 
-def test_classa_total_load_is_554kN():
-    """Class A total axle load must equal 554 kN per IRC 6-2017."""
+def test_classa_total_load():
+    """Class A total axle load: 55.4 tonnes × g ≈ 543.5 kN."""
+    g = 9.81
+    expected_N = (2.7 + 2.7 + 11.4 + 11.4 + 6.8 + 6.8 + 6.8 + 6.8) * 1e3 * g  # 543 474 N
     vehicle = og.LoadModel(model_type="CLASSA").create()
     total_N = sum(pl.load_point_1.p for pl in vehicle.compound_load_obj_list)
-    assert abs(total_N - 554_000) < 1, f"Class A total load {total_N} N != 554 kN"
+    assert abs(total_N - expected_N) < 1, f"Class A total load {total_N} N != {expected_N} N"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
