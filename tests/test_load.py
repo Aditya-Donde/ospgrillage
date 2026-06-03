@@ -1507,16 +1507,22 @@ def test_irc_vehicle_analysis_smoke(bridge_model_42_negative):
     assert {"IRC ClassA", "IRC Class70R"} <= loadcases
 
     disp_y = np.array(results["displacements"].sel(Component="y").values, dtype=float)
-    assert np.all(np.isfinite(disp_y)), "Non-finite displacement values for IRC vehicles"
+    assert np.all(
+        np.isfinite(disp_y)
+    ), "Non-finite displacement values for IRC vehicles"
 
     force_values = np.array(
-        results["forces"].sel(
+        results["forces"]
+        .sel(
             Loadcase=["IRC ClassA", "IRC Class70R"],
             Component=beam_force_components,
-        ).values,
+        )
+        .values,
         dtype=float,
     )
-    assert np.all(np.isfinite(force_values)), "Non-finite beam force values for IRC vehicles"
+    assert np.all(
+        np.isfinite(force_values)
+    ), "Non-finite beam force values for IRC vehicles"
 
 
 def test_class70r_total_load():
@@ -1525,16 +1531,22 @@ def test_class70r_total_load():
     expected_N = (8 + 12 + 12 + 17 + 17 + 17 + 17) * 1e3 * g  # 981 000 N
     vehicle = og.LoadModel(model_type="CLASS70R").create()
     total_N = sum(pl.load_point_1.p for pl in vehicle.compound_load_obj_list)
-    assert abs(total_N - expected_N) < 1, f"Class 70R total load {total_N} N != {expected_N} N"
+    assert (
+        abs(total_N - expected_N) < 1
+    ), f"Class 70R total load {total_N} N != {expected_N} N"
 
 
 def test_classa_total_load():
     """Class A total axle load: 55.4 tonnes × g ≈ 543.5 kN."""
     g = 9.81
-    expected_N = (2.7 + 2.7 + 11.4 + 11.4 + 6.8 + 6.8 + 6.8 + 6.8) * 1e3 * g  # 543 474 N
+    expected_N = (
+        (2.7 + 2.7 + 11.4 + 11.4 + 6.8 + 6.8 + 6.8 + 6.8) * 1e3 * g
+    )  # 543 474 N
     vehicle = og.LoadModel(model_type="CLASSA").create()
     total_N = sum(pl.load_point_1.p for pl in vehicle.compound_load_obj_list)
-    assert abs(total_N - expected_N) < 1, f"Class A total load {total_N} N != {expected_N} N"
+    assert (
+        abs(total_N - expected_N) < 1
+    ), f"Class A total load {total_N} N != {expected_N} N"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
